@@ -76,7 +76,7 @@ export default function App() {
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -165,7 +165,7 @@ export default function App() {
             <Sparkles size={12} />
             <span>Cognitive Linguistics Tool</span>
           </motion.div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-b from-[#ffffff] to-[#94a3b8]">
             The Semantic Solar System
           </h1>
           <p className="text-[#94a3b8] text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
@@ -254,18 +254,18 @@ export default function App() {
                 style={{ width: sunSize, height: sunSize }}
               >
                 <div 
-                  className="w-full h-full rounded-full bg-gradient-to-br from-[#60a5fa] to-[#4f46e5] flex items-center justify-center text-center p-4 shadow-[0_0_50px_rgba(59,130,246,0.5)] border-4 border-white/20"
+                  className="w-full h-full rounded-full bg-gradient-to-br from-[#60a5fa] to-[#4f46e5] flex items-center justify-center text-center p-4 shadow-[0_0_50px_rgba(59,130,246,0.5)] border-4 border-[rgba(255,255,255,0.2)]"
                 >
                   <span 
-                    className="font-black uppercase tracking-tight text-white drop-shadow-md"
+                    className="font-black uppercase tracking-tight text-[#ffffff] drop-shadow-md"
                     style={{ fontSize: `${2 * (scale || 1)}rem` }}
                   >
                     {mapData.target_word}
                   </span>
                 </div>
-                <div className="mt-4 text-center absolute -bottom-16 w-48 pointer-events-none">
+                <div className="mt-4 text-center absolute -bottom-20 w-64 pointer-events-none">
                   <p className="text-[10px] md:text-xs font-bold text-[#60a5fa] uppercase tracking-widest mb-1">Prototype</p>
-                  <p className="text-xs md:text-sm text-[#cbd5e1] font-medium leading-tight line-clamp-2">{mapData.prototype.meaning}</p>
+                  <p className="text-xs md:text-sm text-[#cbd5e1] font-medium leading-relaxed">{mapData.prototype.meaning}</p>
                 </div>
               </motion.div>
 
@@ -372,7 +372,7 @@ export default function App() {
                     style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)' }}
                   >
                     <div className="flex flex-col items-center gap-1">
-                      <h4 className="text-xs md:text-sm font-bold text-white uppercase tracking-wider">{hoveredNode.text}</h4>
+                      <h4 className="text-xs md:text-sm font-bold text-[#ffffff] uppercase tracking-wider">{hoveredNode.text}</h4>
                       <p className="text-[10px] md:text-xs text-[#cbd5e1] leading-relaxed italic">
                         {hoveredNode.connection}
                       </p>
@@ -393,7 +393,7 @@ export default function App() {
             <div className="mt-12 flex gap-4" data-html2canvas-ignore="true">
               <button
                 onClick={exportAsImage}
-                className="group flex items-center gap-2 bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)] text-white font-medium px-8 py-4 rounded-2xl transition-all active:scale-95"
+                className="group flex items-center gap-2 bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)] text-[#ffffff] font-medium px-8 py-4 rounded-2xl transition-all active:scale-95"
               >
                 <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
                 <span>Export Map as Image</span>
@@ -433,7 +433,7 @@ export default function App() {
                 </motion.div>
               </div>
             </div>
-            <p className="mt-8 text-xl font-bold tracking-tight text-white">Traversing Cognitive Pathways...</p>
+            <p className="mt-8 text-xl font-bold tracking-tight text-[#ffffff]">Traversing Cognitive Pathways...</p>
             <p className="mt-2 text-[#94a3b8] animate-pulse italic">Thinking like George Lakoff...</p>
           </motion.div>
         )}
