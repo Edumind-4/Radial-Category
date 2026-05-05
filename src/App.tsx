@@ -26,7 +26,14 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [hoveredNode, setHoveredNode] = useState<{ text: string, connection: string } | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [isEmbed, setIsEmbed] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Detect embed mode
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setIsEmbed(params.get('embed') === 'true');
+  }, []);
 
   // Responsive logic
   useEffect(() => {
@@ -69,7 +76,7 @@ export default function App() {
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -146,28 +153,31 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="min-h-screen bg-[#020617] text-[#f8fafc] font-sans overflow-x-hidden">
       {/* Header section */}
-      <header className="max-w-4xl mx-auto pt-12 px-6 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium mb-4 uppercase tracking-widest"
-        >
-          <Sparkles size={12} />
-          <span>Cognitive Linguistics Tool</span>
-        </motion.div>
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
-          The Semantic Solar System
-        </h1>
-        <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-          Map the radial categories and metaphorical extensions of any word using Lakoff's cognitive framework.
-        </p>
+      {!isEmbed && (
+        <header className="max-w-4xl mx-auto pt-12 px-6 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] text-[#60a5fa] text-xs font-medium mb-4 uppercase tracking-widest"
+          >
+            <Sparkles size={12} />
+            <span>Cognitive Linguistics Tool</span>
+          </motion.div>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">
+            The Semantic Solar System
+          </h1>
+          <p className="text-[#94a3b8] text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            Map the radial categories and metaphorical extensions of any word using Lakoff's cognitive framework.
+          </p>
+        </header>
+      )}
 
-        {/* Input area */}
-        <div className="mt-10 max-w-lg mx-auto relative">
+      {/* Input area */}
+      <div className={`${isEmbed ? 'pt-8' : 'mt-10'} max-w-lg mx-auto px-6 relative`}>
           <div className="relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-400 transition-colors">
+            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-[#64748b] group-focus-within:text-[#60a5fa] transition-colors">
               <Search size={20} />
             </div>
             <input
@@ -176,13 +186,14 @@ export default function App() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && generateMap()}
               placeholder="Enter a word (e.g. 'Fire', 'Run', 'Head')..."
-              className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-lg placeholder:text-slate-600"
+              className="w-full bg-[rgba(15,23,42,0.5)] border border-[#1e293b] rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[rgba(59,130,246,0.5)] transition-all text-lg placeholder:text-[#475569]"
             />
           </div>
           <button
             onClick={generateMap}
             disabled={loading || !input.trim()}
-            className="mt-4 w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 font-semibold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 active:scale-[0.98]"
+            className="mt-4 w-full bg-[#2563eb] hover:bg-[#3b82f6] disabled:bg-[#0f172a] disabled:text-[#475569] font-semibold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+            style={{ boxShadow: '0 10px 15px -3px rgba(30, 58, 138, 0.2), 0 4px 6px -4px rgba(30, 58, 138, 0.1)' }}
           >
             {loading ? (
               <>
@@ -194,7 +205,6 @@ export default function App() {
             )}
           </button>
         </div>
-      </header>
 
       {/* Error Message */}
       <AnimatePresence>
@@ -203,7 +213,7 @@ export default function App() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="max-w-md mx-auto mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center"
+            className="max-w-md mx-auto mt-6 p-4 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded-xl text-[#f87171] text-sm text-center"
           >
             {error}
           </motion.div>
@@ -221,12 +231,13 @@ export default function App() {
             <div
               ref={canvasRef}
               id="radial-map-canvas"
-              className="relative w-full aspect-square max-w-[800px] bg-[#020617] rounded-[32px] md:rounded-[40px] overflow-hidden border border-[#1e293b] flex items-center justify-center shadow-2xl"
+              className="relative w-full aspect-square max-w-[800px] bg-[#020617] rounded-[32px] md:rounded-[40px] overflow-hidden border border-[#1e293b] flex items-center justify-center"
+              style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
             >
               {/* Space Background Elements */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#2563eb]/10 blur-[120px] rounded-full" />
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4f46e5]/10 blur-[120px] rounded-full" />
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[rgba(37,99,235,0.1)] blur-[120px] rounded-full" />
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[rgba(79,70,229,0.1)] blur-[120px] rounded-full" />
               </div>
 
               {/* Orbit Guides */}
@@ -283,12 +294,13 @@ export default function App() {
                     }}
                   >
                     <motion.div
-                      className="absolute rounded-full bg-[#0f172a] border-2 border-[#6366f1]/50 flex items-center justify-center text-center p-2 cursor-help hover:scale-110 transition-all shadow-lg active:scale-95"
+                      className="absolute rounded-full bg-[#0f172a] border-2 border-[rgba(99,102,241,0.5)] flex items-center justify-center text-center p-2 cursor-help hover:scale-110 transition-all active:scale-95"
                       style={{
                         left: x - (innerNodeSize / 2),
                         top: y - (innerNodeSize / 2),
                         width: innerNodeSize,
-                        height: innerNodeSize
+                        height: innerNodeSize,
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)'
                       }}
                       animate={{ rotate: [0, -360] }}
                       transition={{ duration: 40 + i * 5, repeat: Infinity, ease: "linear" }}
@@ -328,12 +340,13 @@ export default function App() {
                     }}
                   >
                     <motion.div
-                      className="absolute rounded-full bg-[#0f172a]/80 backdrop-blur-sm border-2 border-[#ec4899]/40 flex items-center justify-center text-center p-2 cursor-help hover:scale-110 transition-all shadow-lg active:scale-95"
+                      className="absolute rounded-full bg-[rgba(15,23,42,0.8)] backdrop-blur-sm border-2 border-[rgba(236,72,153,0.4)] flex items-center justify-center text-center p-2 cursor-help hover:scale-110 transition-all active:scale-95"
                       style={{
                         left: x - (outerNodeSize / 2),
                         top: y - (outerNodeSize / 2),
                         width: outerNodeSize,
-                        height: outerNodeSize
+                        height: outerNodeSize,
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)'
                       }}
                       animate={{ rotate: [0, 360] }}
                       transition={{ duration: 60 + i * 10, repeat: Infinity, ease: "linear" }}
@@ -355,7 +368,8 @@ export default function App() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
-                    className="absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 w-[80%] max-w-sm bg-[#0f172a]/95 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-2xl z-50 pointer-events-none text-center"
+                    className="absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 w-[80%] max-w-sm bg-[rgba(15,23,42,0.95)] backdrop-blur-md border border-[rgba(255,255,255,0.1)] rounded-2xl p-4 z-50 pointer-events-none text-center"
+                    style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)' }}
                   >
                     <div className="flex flex-col items-center gap-1">
                       <h4 className="text-xs md:text-sm font-bold text-white uppercase tracking-wider">{hoveredNode.text}</h4>
@@ -379,7 +393,7 @@ export default function App() {
             <div className="mt-12 flex gap-4" data-html2canvas-ignore="true">
               <button
                 onClick={exportAsImage}
-                className="group flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium px-8 py-4 rounded-2xl transition-all active:scale-95"
+                className="group flex items-center gap-2 bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)] text-white font-medium px-8 py-4 rounded-2xl transition-all active:scale-95"
               >
                 <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
                 <span>Export Map as Image</span>
@@ -388,12 +402,12 @@ export default function App() {
           </motion.div>
         ) : (
           !loading && (
-            <div className="h-[500px] flex flex-col items-center justify-center text-slate-500 bg-slate-900/10 rounded-[40px] border border-dashed border-slate-800/50">
-              <div className="mb-4 p-4 rounded-full bg-slate-900/50">
+            <div className="h-[500px] flex flex-col items-center justify-center text-[#64748b] bg-[rgba(15,23,42,0.1)] rounded-[40px] border border-dashed border-[rgba(30,41,59,0.5)]">
+              <div className="mb-4 p-4 rounded-full bg-[rgba(15,23,42,0.5)]">
                 <Info size={32} />
               </div>
-              <p className="text-lg font-medium text-slate-400">Ready to map your first word.</p>
-              <p className="text-sm mt-2 text-slate-600">Enter a term above to explore its cognitive orbits.</p>
+              <p className="text-lg font-medium text-[#94a3b8]">Ready to map your first word.</p>
+              <p className="text-sm mt-2 text-[#475569]">Enter a term above to explore its cognitive orbits.</p>
             </div>
           )
         )}
@@ -406,21 +420,21 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center"
+            className="fixed inset-0 bg-[rgba(2,6,23,0.9)] backdrop-blur-md z-50 flex flex-col items-center justify-center"
           >
             <div className="relative">
-              <div className="w-24 h-24 border-4 border-blue-500/10 border-t-blue-500 rounded-full animate-spin" />
+              <div className="w-24 h-24 border-4 border-[rgba(59,130,246,0.1)] border-t-[#3b82f6] rounded-full animate-spin" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <motion.div
                   animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
-                  <Sparkles className="text-blue-400" size={32} />
+                  <Sparkles className="text-[#60a5fa]" size={32} />
                 </motion.div>
               </div>
             </div>
             <p className="mt-8 text-xl font-bold tracking-tight text-white">Traversing Cognitive Pathways...</p>
-            <p className="mt-2 text-slate-400 animate-pulse italic">Thinking like George Lakoff...</p>
+            <p className="mt-2 text-[#94a3b8] animate-pulse italic">Thinking like George Lakoff...</p>
           </motion.div>
         )}
       </AnimatePresence>
