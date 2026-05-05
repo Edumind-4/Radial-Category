@@ -69,7 +69,7 @@ export default function App() {
 }`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -221,18 +221,18 @@ export default function App() {
             <div
               ref={canvasRef}
               id="radial-map-canvas"
-              className="relative w-full aspect-square max-w-[800px] bg-slate-950 rounded-[32px] md:rounded-[40px] overflow-hidden border border-slate-800 flex items-center justify-center shadow-2xl"
+              className="relative w-full aspect-square max-w-[800px] bg-[#020617] rounded-[32px] md:rounded-[40px] overflow-hidden border border-[#1e293b] flex items-center justify-center shadow-2xl"
             >
               {/* Space Background Elements */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 blur-[120px] rounded-full" />
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/10 blur-[120px] rounded-full" />
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#2563eb]/10 blur-[120px] rounded-full" />
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#4f46e5]/10 blur-[120px] rounded-full" />
               </div>
 
               {/* Orbit Guides */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
-                <circle cx="50%" cy="50%" r={innerRadius} fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 8" className="text-slate-700" />
-                <circle cx="50%" cy="50%" r={outerRadius} fill="none" stroke="currentColor" strokeWidth="1" strokeDasharray="4 8" className="text-slate-700" />
+                <circle cx="50%" cy="50%" r={innerRadius} fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="4 8" />
+                <circle cx="50%" cy="50%" r={outerRadius} fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="4 8" />
               </svg>
 
               {/* Center - The Sun (Prototype) */}
@@ -243,7 +243,7 @@ export default function App() {
                 style={{ width: sunSize, height: sunSize }}
               >
                 <div 
-                  className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-center p-4 shadow-[0_0_50px_rgba(59,130,246,0.5)] border-4 border-white/20"
+                  className="w-full h-full rounded-full bg-gradient-to-br from-[#60a5fa] to-[#4f46e5] flex items-center justify-center text-center p-4 shadow-[0_0_50px_rgba(59,130,246,0.5)] border-4 border-white/20"
                 >
                   <span 
                     className="font-black uppercase tracking-tight text-white drop-shadow-md"
@@ -253,8 +253,8 @@ export default function App() {
                   </span>
                 </div>
                 <div className="mt-4 text-center absolute -bottom-16 w-48 pointer-events-none">
-                  <p className="text-[10px] md:text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Prototype</p>
-                  <p className="text-xs md:text-sm text-slate-300 font-medium leading-tight line-clamp-2">{mapData.prototype.meaning}</p>
+                  <p className="text-[10px] md:text-xs font-bold text-[#60a5fa] uppercase tracking-widest mb-1">Prototype</p>
+                  <p className="text-xs md:text-sm text-[#cbd5e1] font-medium leading-tight line-clamp-2">{mapData.prototype.meaning}</p>
                 </div>
               </motion.div>
 
@@ -283,7 +283,7 @@ export default function App() {
                     }}
                   >
                     <motion.div
-                      className="absolute rounded-full bg-slate-900 border-2 border-indigo-500/50 flex items-center justify-center text-center p-2 cursor-help hover:scale-110 hover:border-indigo-400 transition-all shadow-lg active:scale-95"
+                      className="absolute rounded-full bg-[#0f172a] border-2 border-[#6366f1]/50 flex items-center justify-center text-center p-2 cursor-help hover:scale-110 transition-all shadow-lg active:scale-95"
                       style={{
                         left: x - (innerNodeSize / 2),
                         top: y - (innerNodeSize / 2),
@@ -295,7 +295,7 @@ export default function App() {
                       onMouseEnter={() => setHoveredNode({ text: item.phrase, connection: item.connection })}
                       onMouseLeave={() => setHoveredNode(null)}
                     >
-                      <span className="font-bold text-slate-100 leading-tight" style={{ fontSize: `${0.75 * (scale || 1)}rem` }}>
+                      <span className="font-bold text-[#f8fafc] leading-tight" style={{ fontSize: `${0.75 * (scale || 1)}rem` }}>
                         {item.phrase}
                       </span>
                     </motion.div>
@@ -328,7 +328,7 @@ export default function App() {
                     }}
                   >
                     <motion.div
-                      className="absolute rounded-full bg-slate-900/80 backdrop-blur-sm border-2 border-pink-500/40 flex items-center justify-center text-center p-2 cursor-help hover:scale-110 hover:border-pink-400 transition-all shadow-lg active:scale-95"
+                      className="absolute rounded-full bg-[#0f172a]/80 backdrop-blur-sm border-2 border-[#ec4899]/40 flex items-center justify-center text-center p-2 cursor-help hover:scale-110 transition-all shadow-lg active:scale-95"
                       style={{
                         left: x - (outerNodeSize / 2),
                         top: y - (outerNodeSize / 2),
@@ -340,7 +340,7 @@ export default function App() {
                       onMouseEnter={() => setHoveredNode({ text: item.phrase, connection: item.connection })}
                       onMouseLeave={() => setHoveredNode(null)}
                     >
-                      <span className="font-bold text-slate-200 leading-tight" style={{ fontSize: `${0.75 * (scale || 1)}rem` }}>
+                      <span className="font-bold text-[#f1f5f9] leading-tight" style={{ fontSize: `${0.75 * (scale || 1)}rem` }}>
                         {item.phrase}
                       </span>
                     </motion.div>
@@ -355,11 +355,11 @@ export default function App() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
-                    className="absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 w-[80%] max-w-sm bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-2xl z-50 pointer-events-none text-center"
+                    className="absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 w-[80%] max-w-sm bg-[#0f172a]/95 backdrop-blur-md border border-white/10 rounded-2xl p-4 shadow-2xl z-50 pointer-events-none text-center"
                   >
                     <div className="flex flex-col items-center gap-1">
                       <h4 className="text-xs md:text-sm font-bold text-white uppercase tracking-wider">{hoveredNode.text}</h4>
-                      <p className="text-[10px] md:text-xs text-slate-300 leading-relaxed italic">
+                      <p className="text-[10px] md:text-xs text-[#cbd5e1] leading-relaxed italic">
                         {hoveredNode.connection}
                       </p>
                     </div>
@@ -369,7 +369,7 @@ export default function App() {
 
               {/* WATERMARK */}
               <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none opacity-30 select-none">
-                <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-slate-500">
+                <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#64748b]">
                   created at https://cbse.smartresourcesacademy.com/word-web-maker
                 </p>
               </div>
