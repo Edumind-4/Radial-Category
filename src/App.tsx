@@ -1,8 +1,21 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Download, Info, Loader2, Sparkles } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { 
+  Search, 
+  Download, 
+  Loader2, 
+  Sparkles, 
+  ArrowRight, 
+  CircleDot,
+  Layers,
+  Map as MapIcon,
+  BookOpen,
+  Layout,
+  HelpCircle
+} from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import { domToPng } from 'modern-screenshot';
 
 // Gemini API Configuration
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -10,55 +23,32 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 interface OrbitItem {
   phrase: string;
   connection: string;
+  icon: string; // Dynamic icon name from lucide-react
 }
 
 interface RadialMap {
   target_word: string;
-  prototype: { meaning: string };
+  pronunciation?: string;
+  etymology?: string;
+  prototype: { meaning: string; icon: string };
   inner_orbit: OrbitItem[];
   outer_orbit: OrbitItem[];
 }
+
+// Helper to render lucide icon by name
+const DynamicIcon = memo(({ name, size = 20, className = "" }: { name: string, size?: number, className?: string }) => {
+  // Map strings to Lucide component names
+  const iconName = name.split(/[-_]/).map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join('') as keyof typeof LucideIcons;
+  const IconComponent = (LucideIcons[iconName] || LucideIcons.HelpCircle) as any;
+  return <IconComponent size={size} className={className} />;
+});
 
 export default function App() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [mapData, setMapData] = useState<RadialMap | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<{ text: string, connection: string } | null>(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [isEmbed, setIsEmbed] = useState(false);
-  const canvasRef = useRef<HTMLDivElement>(null);
-
-  // Detect embed mode
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setIsEmbed(params.get('embed') === 'true');
-  }, []);
-
-  // Responsive logic
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        });
-      }
-    });
-
-    observer.observe(canvasRef.current);
-    return () => observer.disconnect();
-  }, [mapData]);
-
-  // Dynamic Scale factors
-  const scale = dimensions.width / 800;
-  const innerRadius = 140 * (scale || 1);
-  const outerRadius = 280 * (scale || 1);
-  const sunSize = 140 * (scale || 1);
-  const innerNodeSize = 96 * (scale || 1);
-  const outerNodeSize = 112 * (scale || 1);
+  const posterRef = useRef<HTMLDivElement>(null);
 
   const generateMap = async () => {
     if (!input.trim()) return;
@@ -67,16 +57,37 @@ export default function App() {
     setMapData(null);
 
     try {
-      const prompt = `Analyze the word '${input}' using George Lakoff's theory of radial categories. Return a strict JSON object with this exact schema:
+      const prompt = `Analyze the word '${input}' through a cognitive linguistics lens using George Lakoff's radial categories theory. 
+Construct a detailed vertical infographic dataset.
+Return a strict JSON object with this schema:
 {
-  "target_word": "The word",
-  "prototype": { "meaning": "The most central, literal, physical meaning of the word." },
-  "inner_orbit": [ {"phrase": "A close physical extension", "connection": "Why the brain connects this"} ], // Provide exactly 3 items
-  "outer_orbit": [ {"phrase": "A highly abstract/metaphorical extension", "connection": "The metaphorical logic"} ] // Provide exactly 4 items
-}`;
+  "target_word": "The word (Title Case)",
+  "pronunciation": "/prəˌnənsēˈāSH(ə)n/",
+  "etymology": "Brief root origin (max 10 words)",
+  "prototype": { 
+    "meaning": "Literal central meaning",
+    "icon": "Lucide icon name (e.g. 'Flame', 'Footprints', 'Home')"
+  },
+  "inner_orbit": [ 
+    {
+      "phrase": "Direct semantic extension", 
+      "connection": "Why the brain connects this",
+      "icon": "Relevant Lucide icon name"
+    } 
+  ], // Exactly 3 items
+  "outer_orbit": [ 
+    {
+      "phrase": "Metaphorical extension", 
+      "connection": "The metaphorical mapping logic",
+      "icon": "Relevant Lucide icon name"
+    } 
+  ] // Exactly 4 items
+}
+
+Use common Lucide icon names like: House, Flame, Heart, Brain, Cloud, Wind, Activity, Zap, Shield, Target, Award, Book, Camera, Coffee, Globe, Key, Lock, Map, Music, Sun, Tool, Truck, Umbrella, User, Video, Watch.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -84,12 +95,15 @@ export default function App() {
             type: Type.OBJECT,
             properties: {
               target_word: { type: Type.STRING },
+              pronunciation: { type: Type.STRING },
+              etymology: { type: Type.STRING },
               prototype: {
                 type: Type.OBJECT,
                 properties: {
-                  meaning: { type: Type.STRING }
+                  meaning: { type: Type.STRING },
+                  icon: { type: Type.STRING }
                 },
-                required: ["meaning"]
+                required: ["meaning", "icon"]
               },
               inner_orbit: {
                 type: Type.ARRAY,
@@ -97,9 +111,10 @@ export default function App() {
                   type: Type.OBJECT,
                   properties: {
                     phrase: { type: Type.STRING },
-                    connection: { type: Type.STRING }
+                    connection: { type: Type.STRING },
+                    icon: { type: Type.STRING }
                   },
-                  required: ["phrase", "connection"]
+                  required: ["phrase", "connection", "icon"]
                 },
                 minItems: 3,
                 maxItems: 3
@@ -110,9 +125,10 @@ export default function App() {
                   type: Type.OBJECT,
                   properties: {
                     phrase: { type: Type.STRING },
-                    connection: { type: Type.STRING }
+                    connection: { type: Type.STRING },
+                    icon: { type: Type.STRING }
                   },
-                  required: ["phrase", "connection"]
+                  required: ["phrase", "connection", "icon"]
                 },
                 minItems: 4,
                 maxItems: 4
@@ -127,314 +143,279 @@ export default function App() {
       setMapData(data);
     } catch (err) {
       console.error(err);
-      setError("Failed to generate map. Please try again.");
+      setError("Analysis failed. Please try a different word.");
     } finally {
       setLoading(false);
     }
   };
 
   const exportAsImage = async () => {
-    if (!canvasRef.current) return;
+    if (!posterRef.current) return;
+    setLoading(true);
     try {
-      const canvas = await html2canvas(canvasRef.current, {
-        backgroundColor: '#0f172a', // slate-900
+      const dataUrl = await domToPng(posterRef.current, {
+        backgroundColor: '#020617',
         scale: 2,
-        logging: false,
-        useCORS: true,
+        quality: 1,
       });
-      const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
-      link.download = `semantic-map-${mapData?.target_word || 'word'}.png`;
-      link.href = image;
+      link.download = `semantic-infographic-${mapData?.target_word || 'word'}.png`;
+      link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error("Export failed", err);
+      setError("Export failed. This can happen with very large infographics.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-[#f8fafc] font-sans overflow-x-hidden">
-      {/* Header section */}
-      {!isEmbed && (
-        <header className="max-w-4xl mx-auto pt-12 px-6 text-center">
+    <div className="min-h-screen bg-[#020617] text-[#f1f5f9] font-sans selection:bg-[#3b82f6] selection:text-white pb-20 overflow-x-hidden">
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-20 z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/20 blur-[120px] rounded-full" />
+      </div>
+
+      <div className="relative z-10 max-w-2xl mx-auto px-6 pt-12">
+        <header className="text-center mb-12">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(59,130,246,0.1)] border border-[rgba(59,130,246,0.2)] text-[#60a5fa] text-xs font-medium mb-4 uppercase tracking-widest"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-blue-400 text-xs font-bold uppercase tracking-[0.2em] mb-6 shadow-xl"
           >
-            <Sparkles size={12} />
-            <span>Cognitive Linguistics Tool</span>
+            <Sparkles size={14} className="text-blue-500" />
+            <span>Infographic Word Lab</span>
           </motion.div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-b from-[#ffffff] to-[#94a3b8]">
-            The Semantic Solar System
+          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight bg-gradient-to-br from-white via-slate-200 to-slate-500 bg-clip-text text-transparent">
+            Semantic Navigator
           </h1>
-          <p className="text-[#94a3b8] text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            Map the radial categories and metaphorical extensions of any word using Lakoff's cognitive framework.
+          <p className="text-slate-400 text-lg">
+            Visualize the radial structure and metaphorical logic of any word.
           </p>
         </header>
-      )}
 
-      {/* Input area */}
-      <div className={`${isEmbed ? 'pt-8' : 'mt-10'} max-w-lg mx-auto px-6 relative`}>
+        {/* Search Input */}
+        <div className="mb-16">
           <div className="relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-[#64748b] group-focus-within:text-[#60a5fa] transition-colors">
-              <Search size={20} />
+            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-500 transition-colors">
+              <Search size={22} />
             </div>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && generateMap()}
-              placeholder="Enter a word (e.g. 'Fire', 'Run', 'Head')..."
-              className="w-full bg-[rgba(15,23,42,0.5)] border border-[#1e293b] rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[rgba(59,130,246,0.5)] transition-all text-lg placeholder:text-[#475569]"
+              placeholder="Enter a term (e.g. 'Flame', 'Path')..."
+              className="w-full bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl py-5 pl-14 pr-6 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-xl shadow-2xl placeholder:text-slate-600"
             />
-          </div>
-          <button
-            onClick={generateMap}
-            disabled={loading || !input.trim()}
-            className="mt-4 w-full bg-[#2563eb] hover:bg-[#3b82f6] disabled:bg-[#0f172a] disabled:text-[#475569] font-semibold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-            style={{ boxShadow: '0 10px 15px -3px rgba(30, 58, 138, 0.2), 0 4px 6px -4px rgba(30, 58, 138, 0.1)' }}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin" size={20} />
-                <span>Analyzing Cognition...</span>
-              </>
-            ) : (
-              <span>Generate Radial Map</span>
+            {input && (
+              <button 
+                onClick={generateMap}
+                disabled={loading}
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-2xl transition-all active:scale-95 disabled:opacity-50"
+              >
+                {loading ? <Loader2 size={20} className="animate-spin" /> : <ArrowRight size={20} />}
+              </button>
             )}
-          </button>
+          </div>
+          {error && (
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4 text-rose-500 text-center text-sm font-medium">
+              {error}
+            </motion.p>
+          )}
         </div>
 
-      {/* Error Message */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="max-w-md mx-auto mt-6 p-4 bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.2)] rounded-xl text-[#f87171] text-sm text-center"
-          >
-            {error}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Visual Canvas */}
-      <main className="max-w-6xl mx-auto mt-16 px-6 pb-24">
         {mapData ? (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col gap-8"
           >
-            <div
-              ref={canvasRef}
-              id="radial-map-canvas"
-              className="relative w-full aspect-square max-w-[800px] bg-[#020617] rounded-[32px] md:rounded-[40px] overflow-hidden border border-[#1e293b] flex items-center justify-center"
-              style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}
+            {/* INFOGRAPHIC POSTER */}
+            <div 
+              ref={posterRef}
+              className="bg-slate-950 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-[0_40px_100px_-12px_rgba(0,0,0,0.8)] p-8 md:p-12 relative"
             >
-              {/* Space Background Elements */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[rgba(37,99,235,0.1)] blur-[120px] rounded-full" />
-                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[rgba(79,70,229,0.1)] blur-[120px] rounded-full" />
-              </div>
+              {/* Decorative elements */}
+              <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 blur-[80px] rounded-full pointer-events-none" />
 
-              {/* Orbit Guides */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20">
-                <circle cx="50%" cy="50%" r={innerRadius} fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="4 8" />
-                <circle cx="50%" cy="50%" r={outerRadius} fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="4 8" />
-              </svg>
-
-              {/* Center - The Sun (Prototype) */}
-              <motion.div
-                className="relative z-20 flex flex-col items-center"
-                onMouseEnter={() => setHoveredNode({ text: mapData.target_word, connection: mapData.prototype.meaning })}
-                onMouseLeave={() => setHoveredNode(null)}
-                style={{ width: sunSize, height: sunSize }}
-              >
-                <div 
-                  className="w-full h-full rounded-full bg-gradient-to-br from-[#60a5fa] to-[#4f46e5] flex items-center justify-center text-center p-4 shadow-[0_0_50px_rgba(59,130,246,0.5)] border-4 border-[rgba(255,255,255,0.2)]"
-                >
-                  <span 
-                    className="font-black uppercase tracking-tight text-[#ffffff] drop-shadow-md"
-                    style={{ fontSize: `${2 * (scale || 1)}rem` }}
-                  >
+              <div className="relative z-10">
+                {/* 1. Header Information */}
+                <div className="flex flex-col items-center text-center mb-16 pb-12 border-b border-white/5">
+                  <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 mb-4">Semantic Profile</span>
+                  <h2 className="text-6xl md:text-7xl font-black uppercase tracking-tighter mb-6 text-white drop-shadow-2xl">
                     {mapData.target_word}
-                  </span>
+                  </h2>
+                  <div className="flex flex-wrap justify-center items-center gap-4 text-slate-400 font-mono text-xs md:text-sm">
+                    <span className="bg-white/5 px-4 py-1.5 rounded-full border border-white/10">{mapData.pronunciation}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-700 hidden md:block" />
+                    <span className="tracking-wide italic">{mapData.etymology}</span>
+                  </div>
                 </div>
-                <div className="mt-4 text-center absolute -bottom-20 w-64 pointer-events-none">
-                  <p className="text-[10px] md:text-xs font-bold text-[#60a5fa] uppercase tracking-widest mb-1">Prototype</p>
-                  <p className="text-xs md:text-sm text-[#cbd5e1] font-medium leading-relaxed">{mapData.prototype.meaning}</p>
+
+                {/* 2. Core Prototype Card */}
+                <div className="p-8 md:p-12 rounded-[2.5rem] bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-900 w-full shadow-2xl mb-16 relative overflow-hidden flex flex-col items-center text-center">
+                   <div className="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+                   <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-6 shadow-inner border border-white/20">
+                      <DynamicIcon name={mapData.prototype.icon} size={40} className="text-white" />
+                   </div>
+                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-100/70 mb-4">Central Prototype Meaning</p>
+                   <h3 className="text-2xl md:text-3xl font-black leading-tight text-white max-w-lg mb-2">
+                     {mapData.prototype.meaning}
+                   </h3>
                 </div>
-              </motion.div>
 
-              {/* Inner Orbit (3 Items) */}
-              {mapData.inner_orbit.map((item, i) => {
-                const angle = (i * (360 / 3)) * (Math.PI / 180);
-                const x = Math.cos(angle) * innerRadius;
-                const y = Math.sin(angle) * innerRadius;
-
-                return (
-                  <motion.div
-                    key={`inner-${i}`}
-                    className="absolute z-10 flex flex-col items-center"
-                    animate={{ rotate: [0, 360] }}
-                    transition={{
-                      duration: 40 + i * 5,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    style={{
-                      transformOrigin: "center center",
-                      top: "50%",
-                      left: "50%",
-                      width: 0,
-                      height: 0,
-                    }}
-                  >
-                    <motion.div
-                      className="absolute rounded-full bg-[#0f172a] border-2 border-[rgba(99,102,241,0.5)] flex items-center justify-center text-center p-2 cursor-help hover:scale-110 transition-all active:scale-95"
-                      style={{
-                        left: x - (innerNodeSize / 2),
-                        top: y - (innerNodeSize / 2),
-                        width: innerNodeSize,
-                        height: innerNodeSize,
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)'
-                      }}
-                      animate={{ rotate: [0, -360] }}
-                      transition={{ duration: 40 + i * 5, repeat: Infinity, ease: "linear" }}
-                      onMouseEnter={() => setHoveredNode({ text: item.phrase, connection: item.connection })}
-                      onMouseLeave={() => setHoveredNode(null)}
-                    >
-                      <span className="font-bold text-[#f8fafc] leading-tight" style={{ fontSize: `${0.75 * (scale || 1)}rem` }}>
-                        {item.phrase}
-                      </span>
-                    </motion.div>
-                  </motion.div>
-                );
-              })}
-
-              {/* Outer Orbit (4 Items) */}
-              {mapData.outer_orbit.map((item, i) => {
-                const angle = (i * (360 / 4) + 45) * (Math.PI / 180);
-                const x = Math.cos(angle) * outerRadius;
-                const y = Math.sin(angle) * outerRadius;
-
-                return (
-                  <motion.div
-                    key={`outer-${i}`}
-                    className="absolute z-10 flex flex-col items-center"
-                    animate={{ rotate: [0, -360] }}
-                    transition={{
-                      duration: 60 + i * 10,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    style={{
-                      transformOrigin: "center center",
-                      top: "50%",
-                      left: "50%",
-                      width: 0,
-                      height: 0,
-                    }}
-                  >
-                    <motion.div
-                      className="absolute rounded-full bg-[rgba(15,23,42,0.8)] backdrop-blur-sm border-2 border-[rgba(236,72,153,0.4)] flex items-center justify-center text-center p-2 cursor-help hover:scale-110 transition-all active:scale-95"
-                      style={{
-                        left: x - (outerNodeSize / 2),
-                        top: y - (outerNodeSize / 2),
-                        width: outerNodeSize,
-                        height: outerNodeSize,
-                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)'
-                      }}
-                      animate={{ rotate: [0, 360] }}
-                      transition={{ duration: 60 + i * 10, repeat: Infinity, ease: "linear" }}
-                      onMouseEnter={() => setHoveredNode({ text: item.phrase, connection: item.connection })}
-                      onMouseLeave={() => setHoveredNode(null)}
-                    >
-                      <span className="font-bold text-[#f1f5f9] leading-tight" style={{ fontSize: `${0.75 * (scale || 1)}rem` }}>
-                        {item.phrase}
-                      </span>
-                    </motion.div>
-                  </motion.div>
-                );
-              })}
-
-              {/* Hover Info Tooltip (Inside Canvas) */}
-              <AnimatePresence>
-                {hoveredNode && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 5 }}
-                    className="absolute bottom-20 md:bottom-24 left-1/2 -translate-x-1/2 w-[80%] max-w-sm bg-[rgba(15,23,42,0.95)] backdrop-blur-md border border-[rgba(255,255,255,0.1)] rounded-2xl p-4 z-50 pointer-events-none text-center"
-                    style={{ boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)' }}
-                  >
-                    <div className="flex flex-col items-center gap-1">
-                      <h4 className="text-xs md:text-sm font-bold text-[#ffffff] uppercase tracking-wider">{hoveredNode.text}</h4>
-                      <p className="text-[10px] md:text-xs text-[#cbd5e1] leading-relaxed italic">
-                        {hoveredNode.connection}
-                      </p>
+                {/* 3. Direct Semantic Extensions (Inner Orbit) */}
+                <div className="mb-16">
+                  <div className="flex items-center gap-3 mb-10">
+                    <div className="w-10 h-10 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shadow-lg">
+                      <Layout size={18} className="text-blue-400" />
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <h3 className="text-xl font-black uppercase tracking-widest text-slate-200">Semantic Orbits</h3>
+                    <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                  </div>
 
-              {/* WATERMARK */}
-              <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none opacity-30 select-none">
-                <p className="text-[10px] font-mono tracking-[0.2em] uppercase text-[#64748b]">
-                  created at https://cbse.smartresourcesacademy.com/word-web-maker
-                </p>
+                  <div className="grid gap-6">
+                    {mapData.inner_orbit.map((item, idx) => (
+                      <motion.div 
+                        key={idx}
+                        whileHover={{ x: 8 }}
+                        className="group flex flex-col md:flex-row gap-6 bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 rounded-[2rem] p-8 transition-all shadow-xl"
+                      >
+                         <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-blue-600/10 border border-blue-600/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                            <DynamicIcon name={item.icon} size={28} className="text-blue-400" />
+                         </div>
+                         <div className="flex flex-col justify-center">
+                            <h4 className="text-lg font-black uppercase tracking-wide text-white mb-2">{item.phrase}</h4>
+                            <p className="text-base text-slate-400 leading-relaxed italic">{item.connection}</p>
+                         </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Metaphorical Mappings (Outer Orbit) */}
+                <div className="mb-12">
+                  <div className="flex items-center gap-3 mb-10">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shadow-lg">
+                      <MapIcon size={18} className="text-purple-400" />
+                    </div>
+                    <h3 className="text-xl font-black uppercase tracking-widest text-slate-200">Metaphorical Horizon</h3>
+                    <div className="flex-1 h-px bg-gradient-to-r from-white/10 to-transparent" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {mapData.outer_orbit.map((item, idx) => (
+                      <motion.div 
+                        key={idx}
+                        whileHover={{ y: -8 }}
+                        className="bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-[2.5rem] p-8 hover:bg-slate-900 transition-all flex flex-col items-center text-center shadow-lg"
+                      >
+                         <div className="w-14 h-14 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6">
+                            <DynamicIcon name={item.icon} size={24} className="text-purple-400" />
+                         </div>
+                         <h4 className="text-sm font-black uppercase tracking-[0.2em] text-white mb-4">{item.phrase}</h4>
+                         <p className="text-sm text-slate-500 leading-relaxed font-medium">{item.connection}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Watermark Footer */}
+                <div className="mt-24 pt-10 border-t border-white/5 flex flex-col items-center gap-8">
+                   <div className="flex items-center gap-4 opacity-40">
+                      <div className="w-8 h-[2px] bg-blue-500" />
+                      <CircleDot size={20} className="text-blue-500" />
+                      <div className="w-8 h-[2px] bg-blue-500" />
+                   </div>
+                   <div className="flex flex-col items-center gap-2">
+                     <p className="text-[10px] font-mono tracking-[0.4em] uppercase text-slate-600">Cognitive Navigator v1.0</p>
+                     <p className="text-[9px] font-mono tracking-[0.2em] uppercase text-slate-700">created at https://cbse.smartresourcesacademy.com/word-web-maker</p>
+                   </div>
+                </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="mt-12 flex gap-4" data-html2canvas-ignore="true">
+            {/* Poster Actions */}
+            <div className="flex flex-wrap justify-center gap-4 mt-8 pb-12">
               <button
                 onClick={exportAsImage}
-                className="group flex items-center gap-2 bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] border border-[rgba(255,255,255,0.1)] text-[#ffffff] font-medium px-8 py-4 rounded-2xl transition-all active:scale-95"
+                className="group flex items-center gap-3 bg-white hover:bg-slate-100 text-slate-950 font-black px-10 py-5 rounded-[2rem] transition-all active:scale-95 shadow-[0_20px_50px_rgba(255,255,255,0.1)]"
               >
-                <Download size={18} className="group-hover:translate-y-0.5 transition-transform" />
-                <span>Export Map as Image</span>
+                <Download size={20} className="group-hover:-translate-y-1 transition-transform" />
+                <span>Download Infographic</span>
+              </button>
+              
+              <button
+                onClick={() => setMapData(null)}
+                className="flex items-center gap-3 bg-slate-900/50 hover:bg-white/10 text-slate-400 font-bold px-10 py-5 rounded-[2rem] transition-all border border-white/10"
+              >
+                <span>New Analysis</span>
               </button>
             </div>
           </motion.div>
         ) : (
           !loading && (
-            <div className="h-[500px] flex flex-col items-center justify-center text-[#64748b] bg-[rgba(15,23,42,0.1)] rounded-[40px] border border-dashed border-[rgba(30,41,59,0.5)]">
-              <div className="mb-4 p-4 rounded-full bg-[rgba(15,23,42,0.5)]">
-                <Info size={32} />
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="h-[450px] flex flex-col items-center justify-center text-slate-600 bg-slate-900/20 rounded-[3rem] border border-dashed border-white/5"
+            >
+              <div className="mb-8 p-8 rounded-[2.5rem] bg-slate-900/50 shadow-2xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-blue-500/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                <BookOpen size={64} className="text-blue-500/30 relative z-10" />
               </div>
-              <p className="text-lg font-medium text-[#94a3b8]">Ready to map your first word.</p>
-              <p className="text-sm mt-2 text-[#475569]">Enter a term above to explore its cognitive orbits.</p>
-            </div>
+              <h3 className="text-2xl font-black text-slate-400 mb-2">Ready for Navigation</h3>
+              <p className="text-center text-slate-600 max-w-sm px-6 leading-relaxed">
+                Enter any concept to generate a professional vertical infographic based on radial category theory.
+              </p>
+            </motion.div>
           )
         )}
-      </main>
+      </div>
 
-      {/* Loading Placeholder */}
+      {/* Loading Experience */}
       <AnimatePresence>
         {loading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-[rgba(2,6,23,0.9)] backdrop-blur-md z-50 flex flex-col items-center justify-center"
+            className="fixed inset-0 bg-[#020617]/95 backdrop-blur-2xl z-[100] flex flex-col items-center justify-center p-6"
           >
-            <div className="relative">
-              <div className="w-24 h-24 border-4 border-[rgba(59,130,246,0.1)] border-t-[#3b82f6] rounded-full animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Sparkles className="text-[#60a5fa]" size={32} />
-                </motion.div>
+            <div className="relative mb-12">
+               <div className="w-32 h-32 border-4 border-blue-500/10 border-t-blue-500 rounded-full animate-[spin_1.2s_cubic_bezier(0.76,0,0.24,1)_infinite]" />
+               <div className="absolute inset-0 flex items-center justify-center">
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 180, 270, 360] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <Layers className="text-blue-400" size={40} />
+                  </motion.div>
+               </div>
+            </div>
+            
+            <div className="text-center">
+              <h2 className="text-3xl font-black text-white tracking-tight mb-4">Analysing Category Nodes</h2>
+              <div className="space-y-3">
+                 {[ "Deconstructing semantics", "Extracting metaphors", "Formatting infographic" ].map((text, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.4 }}
+                      className="flex items-center justify-center gap-3 text-slate-500 font-mono text-[10px] uppercase tracking-[0.3em]"
+                    >
+                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500/40" />
+                       {text}
+                    </motion.div>
+                 ))}
               </div>
             </div>
-            <p className="mt-8 text-xl font-bold tracking-tight text-[#ffffff]">Traversing Cognitive Pathways...</p>
-            <p className="mt-2 text-[#94a3b8] animate-pulse italic">Thinking like George Lakoff...</p>
           </motion.div>
         )}
       </AnimatePresence>
