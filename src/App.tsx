@@ -87,7 +87,7 @@ Return a strict JSON object with this schema:
 Use common Lucide icon names like: House, Flame, Heart, Brain, Cloud, Wind, Activity, Zap, Shield, Target, Award, Book, Camera, Coffee, Globe, Key, Lock, Map, Music, Sun, Tool, Truck, Umbrella, User, Video, Watch.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.5-flash-lite",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
